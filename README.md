@@ -1,5 +1,7 @@
 # 🏠💰 Mortgage Calculator Web Application (With features for 🇸🇪 Swedish Market)
 
+![Header Image](mortgage_calculator.jpg)
+
 This is a 🌐 web application built using Django 🐍 for calculating mortgage payment details, including amortization, interest payments, and tax deductions. The app provides a detailed breakdown of the loan balance and payment details, along with 📊 informative charts to help visualize the mortgage situation.
 
 *I had need to calculate mortgage payments for me to facilitate my financial choices. Many banks already provide this information but I wanted to have a tool that would allow me to see the impact of different choices on my mortgage easily. I also wanted to have a tool that would allow me to see the impact of reinvesting tax deductions on my mortgage. This is why I decided to build this tool. Such tool, especially if expanded is to facilitate informed financial choices for people who are struggling with deciding what to do with their money.*

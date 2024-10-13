@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mortgage Calculation Results</title>
+    <!-- Material Design Bootstrap CSS -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/mdb-ui-kit/6.3.0/mdb.min.css" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .toggle-section {
+            cursor: pointer;
+            color: #007bff;
+        }
+        .toggle-section:hover {
+            text-decoration: underline;
+        }
+        .monospaced {
+            font-family: 'Courier New', Courier, monospace;
+        }
+        .summary-box {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            text-align: center;
+            align-items: center;
+        }
+        .summary-box-item {
+            border: 1px solid #ddd;
+            padding: 1rem;
+            background-color: #f8f9fa;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="container mt-5">
+        <div class="card shadow-lg border-0 mb-4">
+            <div class="card-header bg-primary text-white text-center">
+                <h2 class="h4 mb-0">Mortgage Calculation Results</h2>
+            </div>
+            <div class="card-body">
+                <!-- Summary Box in Grid Format -->
+                <div class="summary-box mb-4">
+                    <div class="summary-box-item">
+                        <h5>Total Purchase Price</h5>
+                        <p class="monospaced">{{ total_purchase_price|floatformat:0 }}</p>
+                    </div>
+                    <div class="summary-box-item">
+                        <h5>Loan Value</h5>
+                        <p class="monospaced">{{ loan_value|floatformat:0 }}</p>
+                    </div>
+                    <div class="summary-box-item">
+                        <h5>Deposit</h5>
+                        <p class="monospaced">{{ deposit|floatformat:0 }}</p>
+                    </div>
+                    <div class="summary-box-item">
+                        <h5>Monthly Amortisation</h5>
+                        <p class="monospaced">{{ monthly_amortisation|floatformat:0 }}</p>
+                    </div>
+                    <div class="summary-box-item">
+                        <h5>Monthly Association Fee</h5>
+                        <p class="monospaced">{{ monthly_association_fee|floatformat:0 }}</p>
+                    </div>
+                    <div class="summary-box-item">
+                        <h5>Loan Duration</h5>
+                        <p>{{ start_date }} to {{ end_date }}</p>
+                    </div>
+                    <div class="summary-box-item">
+                        <h5>Total Interest Paid (After Tax Reduction)</h5>
+                        <p class="monospaced">{{ total_interest_paid_after_tax|floatformat:0 }}</p>
+                    </div>
+                </div>
+
+                <!-- Yearly Summary Table -->
+                <h2 class="h5 mt-3">Yearly Summary Table</h2>
+                <div class="table-responsive mb-4">
+                    <table class="table table-hover table-bordered">
+                        <thead class="table-primary">
+                            <tr>
+                                <th>Year</th>
+                                <th>Total Interest Payment</th>
+                                <th>Average Monthly Interest</th>
+                                <th>Average Monthly Payment Total</th>
+                                <th>Remaining Loan Value Start</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in summary_table_data %}
+                                <tr>
+                                    <td class="monospaced">{{ row.year }}</td>
+                                    <td class="monospaced">{{ row.total_interest_payment|floatformat:0 }}</td>
+                                    <td class="monospaced">{{ row.average_monthly_interest|floatformat:0 }}</td>
+                                    <td class="monospaced">{{ row.average_monthly_payment_total|floatformat:0 }}</td>
+                                    <td class="monospaced">{{ row.remaining_loan_value_start|floatformat:0 }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Charts -->
+                <h2 class="h5 mt-4">Remaining Loan Over Time</h2>
+                <canvas id="loanChart" class="mb-4"></canvas>
+
+                <h2 class="h5 mt-4">Yearly Interest Payment</h2>
+                <canvas id="interestChart" class="mb-4"></canvas>
+
+                <!-- Toggle-able Detailed Monthly Table -->
+                <h3 class="toggle-section mt-4 mb-2" onclick="toggleDetails()">Show/Hide Detailed Monthly Table</h3>
+                <div id="detailedTable" style="display: none;">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-bordered">
+                            <thead class="table-secondary">
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Year</th>
+                                    <th>Remaining Loan</th>
+                                    <th>Interest Payment</th>
+                                    <th>Monthly Payment</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in table_data %}
+                                    <tr>
+                                        <td class="monospaced">{{ row.date }}</td>
+                                        <td class="monospaced">{{ row.year }}</td>
+                                        <td class="monospaced">{{ row.remaining_loan|floatformat:0 }}</td>
+                                        <td class="monospaced">{{ row.interest_payment|floatformat:0 }}</td>
+                                        <td class="monospaced">{{ row.monthly_payment|floatformat:0 }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <a href="{% url 'mortgage' %}" class="btn btn-secondary btn-lg mt-4">Back</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- MDB JavaScript -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mdb-ui-kit/6.3.0/mdb.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const chartData = {{ chart_data|safe }};
+            const years = chartData.years;
+            const remainingLoanValues = chartData.remaining_loan_values;
+            const totalInterestPayments = chartData.total_interest_payments;
+
+            // Remaining Loan Over Time Chart
+            const loanCtx = document.getElementById('loanChart').getContext('2d');
+            new Chart(loanCtx, {
+                type: 'line',
+                data: {
+                    labels: years,
+                    datasets: [{
+                        label: 'Remaining Loan at Start of Year',
+                        data: remainingLoanValues,
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 2,
+                        fill: false,
+                        pointBackgroundColor: 'rgba(75, 192, 192, 0.7)',
+                        pointRadius: 5,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Year'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Amount (SEK)'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Yearly Interest Payment Chart
+            const interestCtx = document.getElementById('interestChart').getContext('2d');
+            new Chart(interestCtx, {
+                type: 'bar',
+                data: {
+                    labels: years,
+                    datasets: [{
+                        label: 'Total Interest Payment per Year',
+                        data: totalInterestPayments,
+                        backgroundColor: 'rgba(255, 99, 132, 0.5)',
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        borderWidth: 2,
+                        hoverBackgroundColor: 'rgba(255, 99, 132, 0.7)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Year'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Interest Payment (SEK)'
+                            }
+                        }
+                    }
+                }
+            });
+        });
+
+        function toggleDetails() {
+            const detailedTable = document.getElementById('detailedTable');
+            detailedTable.style.display = detailedTable.style.display === 'none' ? 'block' : 'none';
+        }
+    </script>
+</body>
+</html>
